@@ -1,0 +1,155 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <string.h>
+#include <ctype.h>
+
+// 定义双向循环链表节点结构体
+typedef struct Node {
+    int data;
+    struct Node *prev;
+    struct Node *next;
+} Node;
+
+// 创建新节点
+Node* createNode(int data) {
+    Node* newNode = (Node*)malloc(sizeof(Node));
+    if (newNode == NULL) {
+        fprintf(stderr, "内存分配失败\n");
+        exit(EXIT_FAILURE);
+    }
+    newNode->data = data;
+    newNode->prev = newNode;
+    newNode->next = newNode;
+    return newNode;
+}
+
+// 插入节点到链表尾部
+void insertNode(Node* head, int data) {
+    if (data < 0 || data > 9999) {
+        fprintf(stderr, "数据 %d 超出范围 [0, 9999]\n", data);
+        exit(EXIT_FAILURE);
+    }
+    Node* newNode = createNode(data);
+    Node* tail = head->prev;
+    newNode->next = head;
+    newNode->prev = tail;
+    tail->next = newNode;
+    head->prev = newNode;
+}
+
+// 打印链表
+void printList(Node* head) {
+    if (head == NULL) return;
+    if (head->data == -1) {
+        printf("-");
+    }
+    Node* current = head->next;
+    do {
+        printf("%04d", current->data);
+        if (current->next != head) {
+            printf(",");
+        }
+        current = current->next;
+    } while (current != head);
+    printf("\n");
+}
+
+// 释放链表内存
+void freeList(Node* head) {
+    if (head == NULL) return;
+    Node* current = head->next;
+    Node* next;
+    while (current != head) {
+        next = current->next;
+        free(current);
+        current = next;
+    }
+    free(head);
+}
+
+// 从用户输入创建链表
+Node* createListFromInput() {
+    char input[1000];
+    int sign = 1;
+    int num;
+    int i = 0;
+
+    printf("请输入长整数，格式如 -1,1000,9871:\n");
+    scanf("%s", input);
+
+    if (input[0] == '-') {
+        sign = -1;
+        i = 1;
+    }
+
+    Node* head = createNode(sign);
+    char *token = strtok(&input[i], ",");
+    while (token != NULL) {
+        num = atoi(token);
+        insertNode(head, num);
+        token = strtok(NULL, ",");
+    }
+
+    return head;
+}
+
+// 长整数加法运算
+Node* addLongIntegers(Node* num1, Node* num2) {
+    int carry = 0;
+    Node* resultHead = createNode(0);  // 临时符号，后续确定
+    Node* p1 = num1->prev;
+    Node* p2 = num2->prev;
+
+    while (p1 != num1 || p2 != num2 || carry != 0) {
+        int sum = carry;
+        if (p1 != num1) {
+            sum += p1->data;
+            p1 = p1->prev;
+        }
+        if (p2 != num2) {
+            sum += p2->data;
+            p2 = p2->prev;
+        }
+        carry = sum / 10000;
+        sum %= 10000;
+        insertNode(resultHead, sum);
+    }
+
+    // 确定结果的符号
+    if (num1->data == num2->data) {
+        resultHead->data = num1->data;
+    } else {
+        // 这里需要更复杂的逻辑来确定异号相加后的符号，简单处理可以假设最终结果符号由绝对值大的数决定
+        // 实际实现中需要比较绝对值大小
+        resultHead->data = 1; 
+    }
+
+    return resultHead;
+}
+
+int main() {
+    // 从用户输入创建两个长整数链表
+    printf("输入第一个长整数:\n");
+    Node* num1 = createListFromInput();
+    printf("输入第二个长整数:\n");
+    Node* num2 = createListFromInput();
+
+    // 进行加法运算
+    Node* result = addLongIntegers(num1, num2);
+
+    // 打印结果
+    printf("第一个长整数: ");
+    printList(num1);
+    printf("第二个长整数: ");
+    printList(num2);
+    printf("相加结果: ");
+    printList(result);
+
+    // 释放链表内存
+    freeList(num1);
+    freeList(num2);
+    freeList(result);
+
+    return 0;
+}
