@@ -1,0 +1,164 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX_LINE_LENGTH 80
+#define MAX_WORD_LENGTH 100
+
+// 读取一个单词
+int read_word(char *word, FILE *input) {
+    int c;
+    int i = 0;
+    // 跳过前导空格
+    while ((c = fgetc(input)) != EOF && isspace(c)) {
+        if (c == '\n') {
+            return -1; // 遇到换行符
+        }
+    }
+    if (c == EOF) {
+        return 0; // 文件结束
+    }
+    // 读取单词
+    do {
+        word[i++] = c;
+    } while ((c = fgetc(input)) != EOF && !isspace(c));
+    word[i] = '\0';
+    if (c == '\n') {
+        return -1; // 遇到换行符
+    }
+    return 1;
+}
+
+// 格式化文本
+void format_text(FILE *input, FILE *output, int page_length, int page_width, int left_margin, int header_length, int footer_length, int start_page_number) {
+    // 检查行印机最大行宽限制
+    if (2 * left_margin + page_width > 160) {
+        fprintf(stderr, "Error: 左空白数 * 2 + 页宽 > 160，超出行印机最大行宽限制！\n");
+        return;
+    }
+
+    char word[MAX_WORD_LENGTH];
+    int current_line_length = left_margin;
+    int current_page_line = header_length + 1;
+    int current_page_number = start_page_number;
+
+    // 打印页眉
+    for (int i = 0; i < header_length; i++) {
+        for (int j = 0; j < left_margin; j++) {
+            fputc(' ', output);
+        }
+        fputs("Header line\n", output);
+    }
+
+    int in_paragraph = 0;
+    int first_word_on_line = 1;  // 标记是否是行首的第一个单词
+
+    while (read_word(word, input) != 0) {
+        if (strcmp(word, "@") == 0) {
+            // 新段落，空一行并缩进
+            fputc('\n', output);
+            current_line_length = left_margin;
+            current_page_line++;
+            if (current_page_line > page_length - footer_length) {
+                // 换页
+                for (int i = 0; i < footer_length; i++) {
+                    for (int j = 0; j < left_margin; j++) {
+                        fputc(' ', output);
+                    }
+                    fputs("Footer line\n", output);
+                }
+                current_page_number++;
+                current_page_line = 1;
+                for (int i = 0; i < header_length; i++) {
+                    for (int j = 0; j < left_margin; j++) {
+                        fputc(' ', output);
+                    }
+                    fputs("Header line\n", output);
+                }
+                current_page_line = header_length + 1;
+            }
+            for (int i = 0; i < left_margin + 8; i++) {
+                fputc(' ', output);
+            }
+            current_line_length = left_margin + 8;
+            in_paragraph = 1;
+            first_word_on_line = 1;
+        } else {
+            // 检查加上当前单词和可能的空格后是否超出页宽
+            int new_length = current_line_length + strlen(word) + (first_word_on_line ? 0 : 1);
+            if (new_length > page_width) {
+                // 换行
+                fputc('\n', output);
+                current_line_length = left_margin;
+                current_page_line++;
+                if (current_page_line > page_length - footer_length) {
+                    // 换页
+                    for (int i = 0; i < footer_length; i++) {
+                        for (int j = 0; j < left_margin; j++) {
+                            fputc(' ', output);
+                        }
+                        fputs("Footer line\n", output);
+                    }
+                    current_page_number++;
+                    current_page_line = 1;
+                    for (int i = 0; i < header_length; i++) {
+                        for (int j = 0; j < left_margin; j++) {
+                            fputc(' ', output);
+                        }
+                        fputs("Header line\n", output);
+                    }
+                    current_page_line = header_length + 1;
+                }
+                for (int i = 0; i < left_margin; i++) {
+                    fputc(' ', output);
+                }
+                current_line_length = left_margin;
+                in_paragraph = 0;
+                first_word_on_line = 1;
+            }
+            if (!first_word_on_line) {
+                fputc(' ', output);
+                current_line_length++;
+            }
+            fputs(word, output);
+            current_line_length += strlen(word);
+            first_word_on_line = 0;
+        }
+    }
+    fputc('\n', output);
+    // 打印页脚
+    for (int i = 0; i < footer_length; i++) {
+        for (int j = 0; j < left_margin; j++) {
+            fputc(' ', output);
+        }
+        fputs("Footer line\n", output);
+    }
+}
+
+int main() {
+    FILE *input = fopen("input.txt", "r");
+    if (input == NULL) {
+        perror("Failed to open input file");
+        return 1;
+    }
+    FILE *output = fopen("output.txt", "w");
+    if (output == NULL) {
+        perror("Failed to open output file");
+        fclose(input);
+        return 1;
+    }
+
+    int page_length = 60;
+    int page_width = 80;
+    int left_margin = 5;
+    int header_length = 3;
+    int footer_length = 3;
+    int start_page_number = 1;
+
+    format_text(input, output, page_length, page_width, left_margin, header_length, footer_length, start_page_number);
+
+    fclose(input);
+    fclose(output);
+    return 0;
+}
