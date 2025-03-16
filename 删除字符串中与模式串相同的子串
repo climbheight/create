@@ -1,0 +1,9 @@
+void remove_substring(char *s, const char *T) {
+    int len_s = strlen(s);
+    int len_T = strlen(T);
+    char *pos;
+    while ((pos = strstr(s, T)) != NULL) {
+        // 找到子串 T 的位置，将其后的字符向前移动
+        memmove(pos, pos + len_T, strlen(pos + len_T) + 1);
+    }
+}
