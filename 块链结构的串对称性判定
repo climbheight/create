@@ -1,1 +1,110 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+#define BLOCK_SIZE 2
+
+// 定义块链节点结构体
+typedef struct BlockNode {
+    char data[BLOCK_SIZE];
+    struct BlockNode *next;
+} BlockNode;
+
+// 创建新节点
+BlockNode* createNode(const char *s, int start) {
+    BlockNode *node = (BlockNode *)malloc(sizeof(BlockNode));
+    int i;
+    for (i = 0; i < BLOCK_SIZE && s[start + i]; i++) {
+        node->data[i] = s[start + i];
+    }
+    while (i < BLOCK_SIZE) {
+        node->data[i++] = '\0';
+    }
+    node->next = NULL;
+    return node;
+}
+
+// 初始化块链字符串
+BlockNode* initBlockChain(const char *s) {
+    BlockNode *head = NULL, *tail = NULL;
+    for (int i = 0; s[i]; i += BLOCK_SIZE) {
+        BlockNode *newNode = createNode(s, i);
+        if (!head) {
+            head = tail = newNode;
+        } else {
+            tail->next = newNode;
+            tail = newNode;
+        }
+    }
+    return head;
+}
+
+// 计算字符串长度
+int getLength(const char *s) {
+    int len = 0;
+    while (s[len]) len++;
+    return len;
+}
+
+// 判断块链字符串是否对称
+int isSymmetric(BlockNode *head, int len) {
+    BlockNode *left = head, *right = head;
+    int leftIndex = 0, rightIndex = 0;
+    int total = 0;
+    BlockNode *current = head;
+    // 找到右指针起始位置
+    while (current) {
+        total += BLOCK_SIZE;
+        current = current->next;
+    }
+    current = head;
+    while (current) {
+        if (total - BLOCK_SIZE <= len / 2) break;
+        total -= BLOCK_SIZE;
+        right = current;
+        current = current->next;
+    }
+    rightIndex = BLOCK_SIZE - (total - len / 2);
+
+    // 双指针遍历
+    while (left && right) {
+        if (left->data[leftIndex] != right->data[rightIndex]) return 0;
+        leftIndex++;
+        rightIndex--;
+        if (leftIndex == BLOCK_SIZE ||!left->data[leftIndex]) {
+            left = left->next;
+            leftIndex = 0;
+        }
+        if (rightIndex < 0) {
+            right = right->next;
+            if (right) {
+                rightIndex = BLOCK_SIZE - 1;
+                while (right->data[rightIndex] == '\0' && rightIndex > 0) rightIndex--;
+            } else break;
+        }
+    }
+    return 1;
+}
+
+// 释放链表内存
+void freeList(BlockNode *head) {
+    BlockNode *temp;
+    while (head) {
+        temp = head;
+        head = head->next;
+        free(temp);
+    }
+}
+
+int main() {
+    const char *s = "abcba";
+    BlockNode *head = initBlockChain(s);
+    int len = getLength(s);
+    if (isSymmetric(head, len)) {
+        printf("字符串是对称的\n");
+    } else {
+        printf("字符串不是对称的\n");
+    }
+    freeList(head);
+    return 0;
+}
