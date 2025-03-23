@@ -1,66 +1,84 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
-// 定义一个结构体来存储每个人的信息，包括编号和密码
-typedef struct {
-    int id;         // 人的编号
-    int password;   // 人的密码
-} Person;
+typedef struct Node {
+    int num;
+    int password;
+    struct Node *next;
+} Node;
 
-// 解决带有密码的约瑟夫环问题
-void josephusWithPassword(int n, int m, Person *people) {
-    int count = 0;  // 记录出列的人数
-    int current = 0;  // 当前报数的人的索引
+Node* createNode(int num, int password) {
+    Node* newNode =(Node*) malloc(sizeof(Node));
+    newNode->num = num;
+    newNode->password = password;
+    newNode->next = NULL;
+    return newNode;
+}
 
-    while (count < n) {
-        // 找到第 m 个还在圈中的人
-        int step = 0;
-        while (step < m) {
-            if (people[current].id != 0) {
-                step++;
-            }
-            if (step < m) {
-                current = (current + 1) % n;
-            }
-        }
-
-        // 标记该人出列，将其编号置为 0
-        printf("第 %d 个出列的是：%d\n", count + 1, people[current].id);
-        m = people[current].password;  // 更新 m 为出列人的密码
-        people[current].id = 0;        // 标记该人已出列
-        count++;
-
-        // 找到下一个还在圈中的人，作为下一轮报数的起点
-        while (people[current].id == 0) {
-            current = (current + 1) % n;
-        }
+Node* buildCircularList(int n, int passwords[]) {
+    Node *head = createNode(1, passwords[0]);
+    Node *cur = head;
+    for (int i=1; i<n; i++) {
+        cur->next = createNode(i+1, passwords[i]);
+        cur = cur->next;
     }
+    cur->next = head;
+    return head;
+}
+
+void josephusCircleList(Node* head, int m) {
+    Node *cur = head, *prev = NULL;
+    while (cur->next != cur) {
+        for (int i=1; i<m; i++) {
+            prev = cur;
+            cur = cur->next;
+        }
+        
+        m = cur->password;
+        prev->next = cur->next;
+        free(cur);
+        cur = prev->next;
+    }
+    free(cur);
+}
+
+void josephusCircleArray(int n, int passwords[], int m) {
+    int *arr = (int*)malloc(n * sizeof(int));
+    for (int i=0; i<n; i++) arr[i] = i+1;
+    int index = 0, count = n;
+    while (count > 1) {
+        index = (index + m -1) % count;
+       
+        m = passwords[arr[index]-1];
+        for (int i=index; i<count-1; i++) arr[i] = arr[i+1];
+        count--;
+    }
+    free(arr);
 }
 
 int main() {
-    int n, m;
-    printf("请输入总人数 n: ");
-    scanf("%d", &n);
+    FILE *fp = fopen("results.txt", "w");
+    srand(time(NULL));
+    int start_n = 1000, max_n = 500000, step = 1000;
+    for (int n = start_n; n <= max_n; n += step) {
+        int m = rand() % 500000 + 1;
+        int *passwords = (int*)malloc(n * sizeof(int));
+        for (int i=0; i<n; i++) passwords[i] = rand() % 500000 + 1;
 
-    Person *people = (Person *)malloc(n * sizeof(Person));
-    if (people == NULL) {
-        fprintf(stderr, "内存分配失败\n");
-        return 1;
+        Node *head = buildCircularList(n, passwords);
+        clock_t start = clock();
+        josephusCircleList(head, m);
+        double t1 = (clock() - start) / (double)CLOCKS_PER_SEC;
+
+        start = clock();
+        josephusCircleArray(n, passwords, m);
+        double t2 = (clock() - start) / (double)CLOCKS_PER_SEC;
+
+        free(passwords);
+        fprintf(fp, "%d, %f, %f\n", n, t1, t2);
+        printf("n = %d, 链表时间: %f, 数组时间: %f\n", n, t1, t2);
     }
-
-    // 初始化人的编号和输入密码
-    for (int i = 0; i < n; i++) {
-        people[i].id = i + 1;
-        printf("请输入第 %d 个人的密码: ", i + 1);
-        scanf("%d", &people[i].password);
-    }
-
-    printf("请输入初始报数的 m 值: ");
-    scanf("%d", &m);
-
-    // 调用函数解决带有密码的约瑟夫环问题
-    josephusWithPassword(n, m, people);
-
-    free(people);
+    fclose(fp);
     return 0;
 }
